@@ -1,9 +1,15 @@
 let fondo;
-let ovniFrames = [], frameIndex = 0, frameDelay = 5, frameCounter = 0;
+
+let ovni1, ovni2, ovni3, ovni4, ovni5;
+
+
+let imagenActual = 0;        //IMG actual
+let esperaEntreImagenes = 5;  //Cambia cada 5 frames
+let contadorCiclos = 0;     //cuantos cilos
 
 let miNave;
-let enemigos = [];
-let proyectiles = [];
+let listaEnemigos = [];
+let listaProyectiles = [];
 
 
 class MiNave {
@@ -11,63 +17,68 @@ class MiNave {
     this.x = x;
     this.y = y;
     this.size = size;
-    this.lastShot = 0;
-    this.cooldown = 500; 
+    this.ultimoDisparo = 0;
+    this.tiempoRecarga = 500; 
   }
 
   mover() {
     if (keyIsDown(LEFT_ARROW)) this.x -= 5;
     if (keyIsDown(RIGHT_ARROW)) this.x += 5;
-    this.x = constrain(this.x, 0, width - this.size);
+
   }
 
   dibujar() {
-    if (++frameCounter >= frameDelay) {
-      frameCounter = 0;
-      frameIndex = (frameIndex + 1) % ovniFrames.length;
+
+    if (++contadorCiclos >= esperaEntreImagenes) {
+      contadorCiclos = 0;
+      imagenActual = (imagenActual + 1) % 5; 
     }
-    image(ovniFrames[frameIndex], this.x, this.y, this.size, this.size);
+  //Cada vez que se ejecuta dibujar se incrementa +1 y se dibujan los frames con sus cordenadas
+    if (imagenActual === 0) image(ovni1, this.x, this.y, this.size, this.size);
+    if (imagenActual === 1) image(ovni2, this.x, this.y, this.size, this.size);
+    if (imagenActual === 2) image(ovni3, this.x, this.y, this.size, this.size);
+    if (imagenActual === 3) image(ovni4, this.x, this.y, this.size, this.size);
+    if (imagenActual === 4) image(ovni5, this.x, this.y, this.size, this.size);
   }
 
   disparar() {
-    let now = millis();
-    if (now - this.lastShot > this.cooldown) {
-      proyectiles.push(new Proyectil(this.x + this.size / 2, this.y + this.size));
-      this.lastShot = now;
+    let ahora = millis();
+    if (ahora - this.ultimoDisparo > this.tiempoRecarga) {
+      listaProyectiles.push(new Proyectil(this.x + this.size / 2, this.y + this.size));
+      this.ultimoDisparo = ahora;
     }
   }
 }
 
 class NaveEnemiga {
-  constructor(x, y, w, h, dir, speed) {
-    this.x = x;
-    this.y = y;
-    this.w = w;
-    this.h = h;
-    this.dir = dir;
-    this.speed = speed;
+  constructor(x, y) {  //parametros
+    this.x = x;      
+    this.y = y;      
+    this.ancho = 50;    
+    this.alto = 30;     
+    this.direccion = 1;    
+    this.velocidad = 2;  
   }
 
   mover() {
-    this.x += this.dir * this.speed;
-    if (this.x <= 0 || this.x + this.w >= width) {
-      this.dir *= -1; 
+    this.x += this.direccion * this.velocidad;
+    if (this.x <= 0 || this.x + this.ancho >= width) {
+      this.direccion *= -1; 
     }
   }
 
   dibujar() {
     fill(200, 0, 0);
-    rect(this.x, this.y, this.w, this.h);
+    rect(this.x, this.y, this.ancho, this.alto);
   }
 }
 
-
 class Proyectil {
-  constructor(x, y) {
+  constructor(x, y) { //parametros 
     this.x = x;
     this.y = y;
-    this.w = 5;
-    this.h = 15;
+    this.ancho = 5;
+    this.alto = 15;
   }
 
   mover() {
@@ -76,63 +87,67 @@ class Proyectil {
 
   dibujar() {
     fill(255, 255, 0);
-    rect(this.x, this.y, this.w, this.h);
+    rect(this.x, this.y, this.ancho, this.alto);
   }
 
   colisiona(enemigo) {
-    return (this.x > enemigo.x && this.x < enemigo.x + enemigo.w &&
-            this.y + this.h > enemigo.y && this.y < enemigo.y + enemigo.h);
+    return (
+      this.x > enemigo.x &&  //X e Y dentro del enemigo se crea un collide y se destruye
+      this.x < enemigo.x + enemigo.ancho &&
+      this.y + this.alto > enemigo.y &&
+      this.y < enemigo.y + enemigo.alto
+    );
   }
 }
 
 
 function preload() {
   fondo = loadImage("FlappyFond.png");
-  for (let i = 1; i <= 5; i++) ovniFrames.push(loadImage(`I${i}.png`));
+
+  ovni1 = loadImage("I1.png");
+  ovni2 = loadImage("I2.png");
+  ovni3 = loadImage("I3.png");
+  ovni4 = loadImage("I4.png");
+  ovni5 = loadImage("I5.png");
 }
 
-function setup() {
+function setup() {   //cordenadas y canvas
   createCanvas(800, 400);
   miNave = new MiNave(350, 50, 90);
 
-
-  
-  enemigos.push(new NaveEnemiga(200, 250, 50, 30, 1, 2));
-  enemigos.push(new NaveEnemiga(500, 300, 50, 30, -1, 2.5));
+  listaEnemigos.push(new NaveEnemiga(200, 250)); //agraga mas elementos al array
+  listaEnemigos.push(new NaveEnemiga(500, 300));
 }
 
-function draw() {
+function draw() {  
   image(fondo, 0, 0, width, height);
 
-  miNave.mover();
+  miNave.mover(); //Hilo 
   miNave.dibujar();
 
 
-  
-  for (let i = proyectiles.length - 1; i >= 0; i--) {
-    let p = proyectiles[i];
+  for (let i = listaProyectiles.length - 1; i >= 0; i--) {
+    let p = listaProyectiles[i];
     p.mover();
     p.dibujar();
 
-    for (let j = enemigos.length - 1; j >= 0; j--) {
-      if (p.colisiona(enemigos[j])) {
-        enemigos.splice(j, 1);
-        proyectiles.splice(i, 1);
+    for (let j = listaEnemigos.length - 1; j >= 0; j--) {
+      if (p.colisiona(listaEnemigos[j])) {
+        listaEnemigos.splice(j, 1);
+        listaProyectiles.splice(i, 1);
         break;
       }
     }
 
-    if (p.y > height) proyectiles.splice(i, 1);
+    if (p.y > height) listaProyectiles.splice(i, 1);
   }
 
-  
-  for (let e of enemigos) {
+
+  for (let e of listaEnemigos) {
     e.mover();
     e.dibujar();
   }
 }
-
-
 
 function keyPressed() {
   if (key === " ") {
